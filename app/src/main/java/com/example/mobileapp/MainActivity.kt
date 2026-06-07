@@ -80,8 +80,14 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> true
-                R.id.nav_stats -> true
-                R.id.nav_categories -> true
+                R.id.nav_stats -> {
+                    showStatsDialog()
+                    true
+                }
+                R.id.nav_categories -> {
+                    showCategoriesDialog()
+                    true
+                }
                 else -> false
             }
         }
@@ -137,6 +143,40 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Введите сумму", Toast.LENGTH_SHORT).show()
             }
         }
+
+        dialog.setContentView(view)
+        dialog.show()
+    }
+
+    private fun showStatsDialog() {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_stats, null)
+
+        val tvTotalIncome = view.findViewById<TextView>(R.id.tvTotalIncome)
+        val tvTotalExpense = view.findViewById<TextView>(R.id.tvTotalExpense)
+        val tvBalanceStats = view.findViewById<TextView>(R.id.tvBalanceStats)
+
+        val totalIncome = transactions.filter { it.type == "income" }.sumOf { it.amount }
+        val totalExpense = transactions.filter { it.type == "expense" }.sumOf { it.amount }
+        val bal = totalIncome - totalExpense
+
+        tvTotalIncome.text = String.format("%.2f ₽", totalIncome)
+        tvTotalExpense.text = String.format("%.2f ₽", totalExpense)
+        tvBalanceStats.text = String.format("%.2f ₽", bal)
+
+        dialog.setContentView(view)
+        dialog.show()
+    }
+
+    private fun showCategoriesDialog() {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_categories, null)
+
+        val tvExpenseCats = view.findViewById<TextView>(R.id.tvExpenseCategories)
+        val tvIncomeCats = view.findViewById<TextView>(R.id.tvIncomeCategories)
+
+        tvExpenseCats.text = expenseCategories.joinToString("\n")
+        tvIncomeCats.text = incomeCategories.joinToString("\n")
 
         dialog.setContentView(view)
         dialog.show()
