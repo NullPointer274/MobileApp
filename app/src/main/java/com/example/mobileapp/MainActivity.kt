@@ -19,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvBalance: TextView
     private lateinit var rvTransactions: RecyclerView
     private lateinit var bottomNav: BottomNavigationView
+    private lateinit var storage: TransactionStorage
 
     private var balance = 0.0
     private val transactions = mutableListOf<Transaction>()
@@ -39,10 +40,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         initViews()
+        storage = TransactionStorage(this)
         setupRecyclerView()
         setupButtons()
         setupBottomNav()
-        updateUI()
+        loadData()
     }
 
     private fun initViews() {
@@ -60,6 +62,7 @@ class MainActivity : AppCompatActivity() {
             }
             transactions.removeAt(position)
             updateUI()
+            saveData()
             Toast.makeText(this, "Удалено!", Toast.LENGTH_SHORT).show()
         }
         rvTransactions.layoutManager = LinearLayoutManager(this)
@@ -137,6 +140,7 @@ class MainActivity : AppCompatActivity() {
                     balance += amount
                 }
                 updateUI()
+                saveData()
                 dialog.dismiss()
                 Toast.makeText(this, "Добавлено!", Toast.LENGTH_SHORT).show()
             } else {
@@ -189,5 +193,18 @@ class MainActivity : AppCompatActivity() {
             else resources.getColor(android.R.color.holo_red_dark)
         )
         adapter.updateList(transactions)
+    }
+
+    private fun saveData() {
+        storage.saveTransactions(transactions)
+        storage.saveBalance(balance)
+    }
+
+    private fun loadData() {
+        balance = storage.loadBalance()
+        val loadedTransactions = storage.loadTransactions()
+        transactions.clear()
+        transactions.addAll(loadedTransactions)
+        updateUI()
     }
 }
