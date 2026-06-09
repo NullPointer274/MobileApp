@@ -9,7 +9,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import java.util.Date
 import kotlin.math.abs
@@ -102,27 +101,22 @@ class MainActivity : AppCompatActivity() {
 
         val categories = if (type == "expense") expenseCategories else incomeCategories
         val tvTitle = view.findViewById<TextView>(R.id.tvDialogTitle)
-        val btnCategory1 = view.findViewById<MaterialButton>(R.id.btnCategory1)
-        val btnCategory2 = view.findViewById<MaterialButton>(R.id.btnCategory2)
-        val btnCategory3 = view.findViewById<MaterialButton>(R.id.btnCategory3)
-        val btnCategory4 = view.findViewById<MaterialButton>(R.id.btnCategory4)
+        val rvCategories = view.findViewById<RecyclerView>(R.id.rvCategories)
         val etAmount = view.findViewById<TextInputEditText>(R.id.etAmount)
         val btnSave = view.findViewById<Button>(R.id.btnSave)
 
         tvTitle.text = if (type == "expense") "Добавить расход" else "Добавить доход"
 
-        val cats = categories.toMutableList()
-        btnCategory1.text = cats.getOrNull(0) ?: "Другое"
-        btnCategory2.text = cats.getOrNull(1) ?: "Другое"
-        btnCategory3.text = cats.getOrNull(2) ?: "Другое"
-        btnCategory4.text = cats.getOrNull(3) ?: "Другое"
+        var selectedCategory = categories[0]
+        var selectedPosition = 0
 
-        var selectedCategory = btnCategory1.text.toString()
+        val categoryAdapter = CategoryAdapter(categories, selectedPosition) { category, position ->
+            selectedCategory = category
+            selectedPosition = position
+        }
 
-        btnCategory1.setOnClickListener { selectedCategory = btnCategory1.text.toString() }
-        btnCategory2.setOnClickListener { selectedCategory = btnCategory2.text.toString() }
-        btnCategory3.setOnClickListener { selectedCategory = btnCategory3.text.toString() }
-        btnCategory4.setOnClickListener { selectedCategory = btnCategory4.text.toString() }
+        rvCategories.layoutManager = LinearLayoutManager(this)
+        rvCategories.adapter = categoryAdapter
 
         btnSave.setOnClickListener {
             val amount = etAmount.text.toString().toDoubleOrNull()
