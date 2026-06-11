@@ -6,10 +6,10 @@
     android:padding="16dp">
 
     <TextView
-        android:id="@+id/tvDialogTitle"
+        android:id="@+id/tvEditTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Добавить"
+        android:text="Редактировать"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textAlignment="center"
@@ -22,7 +22,7 @@
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etName"
+            android:id="@+id/etEditName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="text"
@@ -32,14 +32,18 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Выберите категорию:"
+        android:text="Категория:"
         android:textSize="14sp"
-        android:layout_marginBottom="8dp"/>
+        android:layout_marginBottom="4dp"/>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvCategories"
+    <TextView
+        android:id="@+id/tvCurrentCategory"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:background="@drawable/border_background"
         android:layout_marginBottom="12dp"/>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -49,7 +53,7 @@
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etAmount"
+            android:id="@+id/etEditAmount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="numberDecimal"
@@ -63,19 +67,50 @@
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etNote"
+            android:id="@+id/etEditNote"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="text"
-            android:hint="Заметка (необязательно)"/>
+            android:hint="Заметка"/>
     </com.google.android.material.textfield.TextInputLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Дата:"
+            android:textSize="14sp"/>
+
+        <TextView
+            android:id="@+id/tvCurrentDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="14sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
     <Button
-        android:id="@+id/btnSave"
+        android:id="@+id/btnChangeDate"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Изменить дату"
+        android:backgroundTint="#FF9800"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="12dp"/>
+
+    <Button
+        android:id="@+id/btnUpdate"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="Сохранить"
-        android:backgroundTint="#4CAF50"
+        android:text="Обновить"
+        android:backgroundTint="#2196F3"
         android:textColor="#FFFFFF"/>
 
 </LinearLayout>
