@@ -9,11 +9,11 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ваш баланс"
+        android:text="Мой кошелёк"
         android:textAlignment="center"
         android:textSize="16sp"
         android:textColor="#666666"
-        android:layout_marginTop="30dp"/>
+        android:layout_marginTop="20dp"/>
 
     <TextView
         android:id="@+id/tvBalance"
@@ -23,47 +23,124 @@
         android:textAlignment="center"
         android:textSize="48sp"
         android:textStyle="bold"
-        android:textColor="#2E7D32"
-        android:layout_marginBottom="30dp"/>
+        android:textColor="#2E7D32"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:paddingHorizontal="16dp"
-        android:layout_marginBottom="20dp">
+        android:layout_marginBottom="16dp">
 
         <Button
             android:id="@+id/btnExpense"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="56dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:text="💸 РАСХОД"
             android:backgroundTint="#EF5350"
-            android:textSize="18sp"
+            android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"/>
 
         <Button
             android:id="@+id/btnIncome"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="56dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="💰 ДОХОД"
             android:backgroundTint="#66BB6A"
-            android:textSize="18sp"
+            android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/tvFilterInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Текущий месяц | Все"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp"
+            android:textAlignment="center"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnFilterAll"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="Все"
+                android:backgroundTint="#9E9E9E"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"/>
+
+            <Button
+                android:id="@+id/btnFilterExpense"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="Расходы"
+                android:backgroundTint="#EF5350"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"/>
+
+            <Button
+                android:id="@+id/btnFilterIncome"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="Доходы"
+                android:backgroundTint="#66BB6A"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"/>
+
+            <Button
+                android:id="@+id/btnFilterMonth"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Месяц"
+                android:backgroundTint="#2196F3"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"/>
+        </LinearLayout>
     </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Последние операции"
-        android:textSize="18sp"
+        android:text="Операции"
+        android:textSize="16sp"
         android:textStyle="bold"
+        android:paddingHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/tvTransactionCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Операций: 0"
+        android:textSize="12sp"
+        android:textColor="#999999"
         android:paddingHorizontal="16dp"
         android:layout_marginBottom="8dp"/>
 

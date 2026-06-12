@@ -20,10 +20,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rvTransactions: RecyclerView
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var storage: TransactionStorage
+    private lateinit var tvFilterInfo: TextView
+    private lateinit var tvTransactionCount: TextView
 
     private var balance = 0.0
     private val transactions = mutableListOf<Transaction>()
     private lateinit var adapter: TransactionAdapter
+
+    private var currentFilterType: String? = null
+    private var currentMonth: Int = Calendar.getInstance().get(Calendar.MONTH)
+    private var currentYear: Int = Calendar.getInstance().get(Calendar.YEAR)
 
     private val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
 
@@ -46,6 +52,7 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupButtons()
         setupBottomNav()
+        setupFilters()
         loadData()
     }
 
@@ -53,6 +60,65 @@ class MainActivity : AppCompatActivity() {
         tvBalance = findViewById(R.id.tvBalance)
         rvTransactions = findViewById(R.id.rvTransactions)
         bottomNav = findViewById(R.id.bottomNav)
+        tvFilterInfo = findViewById(R.id.tvFilterInfo)
+        tvTransactionCount = findViewById(R.id.tvTransactionCount)
+    }
+
+    private fun setupFilters() {
+        findViewById<Button>(R.id.btnFilterAll).setOnClickListener {
+            currentFilterType = null
+            applyFilters()
+        }
+        findViewById<Button>(R.id.btnFilterExpense).setOnClickListener {
+            currentFilterType = "expense"
+            applyFilters()
+        }
+        findViewById<Button>(R.id.btnFilterIncome).setOnClickListener {
+            currentFilterType = "income"
+            applyFilters()
+        }
+        findViewById<Button>(R.id.btnFilterMonth).setOnClickListener {
+            showMonthPicker()
+        }
+        updateFilterInfo()
+    }
+
+    private fun showMonthPicker() {
+        DatePickerDialog(this, { _, year, month, _ ->
+            currentYear = year
+            currentMonth = month
+            updateFilterInfo()
+            applyFilters()
+        }, currentYear, currentMonth, 1).show()
+    }
+
+    private fun updateFilterInfo() {
+        val monthNames = arrayOf("Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+            "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь")
+
+        val typeText = when(currentFilterType) {
+            null -> "Все"
+            "expense" -> "Расходы"
+            "income" -> "Доходы"
+            else -> "Все"
+        }
+        tvFilterInfo.text = "${monthNames[currentMonth]} $currentYear | $typeText"
+    }
+
+    private fun applyFilters() {
+        var filtered = transactions
+
+        if (currentFilterType != null) {
+            filtered = filtered.filter { it.type == currentFilterType }.toMutableList()
+        }
+
+        filtered = filtered.filter { transaction ->
+            val cal = Calendar.getInstance().apply { time = transaction.date }
+            cal.get(Calendar.YEAR) == currentYear && cal.get(Calendar.MONTH) == currentMonth
+        }.toMutableList()
+
+        adapter.updateList(filtered)
+        tvTransactionCount.text = "Операций: ${filtered.size}"
     }
 
     private fun setupRecyclerView() {
@@ -264,7 +330,7 @@ class MainActivity : AppCompatActivity() {
             if (balance >= 0) resources.getColor(android.R.color.holo_green_dark)
             else resources.getColor(android.R.color.holo_red_dark)
         )
-        adapter.updateList(transactions)
+        applyFilters()
     }
 
     private fun saveData() {
