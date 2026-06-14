@@ -1,11 +1,13 @@
 package com.example.financeapp
 
+import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -20,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rvTransactions: RecyclerView
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var storage: TransactionStorage
+    private lateinit var categoryManager: CategoryManager
     private lateinit var tvFilterInfo: TextView
     private lateinit var tvTransactionCount: TextView
 
@@ -33,22 +36,13 @@ class MainActivity : AppCompatActivity() {
 
     private val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
 
-    private val expenseCategories = listOf(
-        "🍔 Еда", "🏠 Жилье", "🚗 Транспорт", "👕 Одежда",
-        "📱 Связь", "🎮 Развлечения", "💊 Здоровье", "📚 Образование"
-    )
-
-    private val incomeCategories = listOf(
-        "💰 Зарплата", "💼 Подработка", "📈 Инвестиции", "🎁 Подарки",
-        "💸 Кэшбэк", "🏦 Проценты", "🔄 Возврат долга"
-    )
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         initViews()
         storage = TransactionStorage(this)
+        categoryManager = CategoryManager(this)
         setupRecyclerView()
         setupButtons()
         setupBottomNav()
@@ -158,7 +152,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_categories -> {
-                    showCategoriesDialog()
+                    showManageCategoriesDialog()
                     true
                 }
                 else -> false
@@ -170,7 +164,11 @@ class MainActivity : AppCompatActivity() {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.dialog_add_transaction, null)
 
-        val categories = if (type == "expense") expenseCategories else incomeCategories
+        val categories = if (type == "expense")
+            categoryManager.getExpenseCategories()
+        else
+            categoryManager.getIncomeCategories()
+
         val tvTitle = view.findViewById<TextView>(R.id.tvDialogTitle)
         val rvCategories = view.findViewById<RecyclerView>(R.id.rvCategories)
         val etName = view.findViewById<TextInputEditText>(R.id.etName)
@@ -188,7 +186,7 @@ class MainActivity : AppCompatActivity() {
             selectedPosition = position
         }
 
-        rvCategories.layoutManager = LinearLayoutManager(this)
+        rvCategories.layoutManager = GridLayoutManager(this, 2)
         rvCategories.adapter = categoryAdapter
 
         btnSave.setOnClickListener {
@@ -310,15 +308,162 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun showCategoriesDialog() {
+    private fun showManageCategoriesDialog() {
         val dialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.dialog_categories, null)
+        val view = layoutInflater.inflate(R.layout.dialog_manage_categories, null)
 
-        val tvExpenseCats = view.findViewById<TextView>(R.id.tvExpenseCategories)
-        val tvIncomeCats = view.findViewById<TextView>(R.id.tvIncomeCategories)
+        val etNewCategory = view.findViewById<TextInputEditText>(R.id.etNewCategory)
+        val btnAddExpense = view.findViewById<Button>(R.id.btnAddExpenseCategory)
+        val btnAddIncome = view.findViewById<Button>(R.id.btnAddIncomeCategory)
+        val rvExpense = view.findViewById<RecyclerView>(R.id.rvExpenseCategories)
+        val rvIncome = view.findViewById<RecyclerView>(R.id.rvIncomeCategories)
 
-        tvExpenseCats.text = expenseCategories.joinToString("\n")
-        tvIncomeCats.text = incomeCategories.joinToString("\n")
+        val expenseCategories = categoryManager.getExpenseCategories().toMutableList()
+        val incomeCategories = categoryManager.getIncomeCategories().toMutableList()
+
+        lateinit var expenseAdapter: CategoryEditAdapter
+        lateinit var incomeAdapter: CategoryEditAdapter
+
+        expenseAdapter = CategoryEditAdapter(
+            expenseCategories,
+            { category, position ->
+                val hasTransactions = transactions.any { it.category == category && it.type == "expense" }
+                if (!hasTransactions) {
+                    categoryManager.removeExpenseCategory(category)
+                    expenseCategories.removeAt(position)
+                    expenseAdapter.updateList(expenseCategories)
+                    Toast.makeText(this, "Категория удалена", Toast.LENGTH_SHORT).show()
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("Категория используется")
+                        .setMessage("Удалить все транзакции с этой категорией?")
+                        .setPositiveButton("Да") { _, _ ->
+                            val iterator = transactions.iterator()
+                            while (iterator.hasNext()) {
+                                val transaction = iterator.next()
+                                if (transaction.category == category && transaction.type == "expense") {
+                                    balance += transaction.amount
+                                    iterator.remove()
+                                }
+                            }
+                            categoryManager.removeExpenseCategory(category)
+                            expenseCategories.removeAt(position)
+                            expenseAdapter.updateList(expenseCategories)
+                            saveData()
+                            updateUI()
+                            Toast.makeText(this, "Категория и транзакции удалены", Toast.LENGTH_LONG).show()
+                        }
+                        .setNegativeButton("Нет", null)
+                        .show()
+                }
+            },
+            { oldName, _, newName ->
+                var updatedCount = 0
+                for (i in transactions.indices) {
+                    if (transactions[i].category == oldName && transactions[i].type == "expense") {
+                        transactions[i] = transactions[i].copy(category = newName)
+                        updatedCount++
+                    }
+                }
+                categoryManager.removeExpenseCategory(oldName)
+                categoryManager.addExpenseCategory(newName)
+                expenseCategories[expenseCategories.indexOf(oldName)] = newName
+                expenseAdapter.updateList(expenseCategories)
+                saveData()
+                updateUI()
+                Toast.makeText(this, "Категория переименована. Обновлено $updatedCount транзакций", Toast.LENGTH_LONG).show()
+            }
+        )
+
+        incomeAdapter = CategoryEditAdapter(
+            incomeCategories,
+            { category, position ->
+                val hasTransactions = transactions.any { it.category == category && it.type == "income" }
+                if (!hasTransactions) {
+                    categoryManager.removeIncomeCategory(category)
+                    incomeCategories.removeAt(position)
+                    incomeAdapter.updateList(incomeCategories)
+                    Toast.makeText(this, "Категория удалена", Toast.LENGTH_SHORT).show()
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("Категория используется")
+                        .setMessage("Удалить все транзакции с этой категорией?")
+                        .setPositiveButton("Да") { _, _ ->
+                            val iterator = transactions.iterator()
+                            while (iterator.hasNext()) {
+                                val transaction = iterator.next()
+                                if (transaction.category == category && transaction.type == "income") {
+                                    balance -= transaction.amount
+                                    iterator.remove()
+                                }
+                            }
+                            categoryManager.removeIncomeCategory(category)
+                            incomeCategories.removeAt(position)
+                            incomeAdapter.updateList(incomeCategories)
+                            saveData()
+                            updateUI()
+                            Toast.makeText(this, "Категория и транзакции удалены", Toast.LENGTH_LONG).show()
+                        }
+                        .setNegativeButton("Нет", null)
+                        .show()
+                }
+            },
+            { oldName, _, newName ->
+                var updatedCount = 0
+                for (i in transactions.indices) {
+                    if (transactions[i].category == oldName && transactions[i].type == "income") {
+                        transactions[i] = transactions[i].copy(category = newName)
+                        updatedCount++
+                    }
+                }
+                categoryManager.removeIncomeCategory(oldName)
+                categoryManager.addIncomeCategory(newName)
+                incomeCategories[incomeCategories.indexOf(oldName)] = newName
+                incomeAdapter.updateList(incomeCategories)
+                saveData()
+                updateUI()
+                Toast.makeText(this, "Категория переименована. Обновлено $updatedCount транзакций", Toast.LENGTH_LONG).show()
+            }
+        )
+
+        rvExpense.layoutManager = LinearLayoutManager(this)
+        rvExpense.adapter = expenseAdapter
+        rvIncome.layoutManager = LinearLayoutManager(this)
+        rvIncome.adapter = incomeAdapter
+
+        btnAddExpense.setOnClickListener {
+            val newCategory = etNewCategory.text.toString().trim()
+            if (newCategory.isNotEmpty()) {
+                if (!expenseCategories.contains(newCategory)) {
+                    categoryManager.addExpenseCategory(newCategory)
+                    expenseCategories.add(newCategory)
+                    expenseAdapter.updateList(expenseCategories)
+                    etNewCategory.text?.clear()
+                    Toast.makeText(this, "✅ Категория добавлена в расходы", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "⚠️ Категория уже существует", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        btnAddIncome.setOnClickListener {
+            val newCategory = etNewCategory.text.toString().trim()
+            if (newCategory.isNotEmpty()) {
+                if (!incomeCategories.contains(newCategory)) {
+                    categoryManager.addIncomeCategory(newCategory)
+                    incomeCategories.add(newCategory)
+                    incomeAdapter.updateList(incomeCategories)
+                    etNewCategory.text?.clear()
+                    Toast.makeText(this, "✅ Категория добавлена в доходы", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "⚠️ Категория уже существует", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         dialog.setContentView(view)
         dialog.show()

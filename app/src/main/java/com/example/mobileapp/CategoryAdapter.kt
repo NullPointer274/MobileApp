@@ -1,8 +1,8 @@
 package com.example.financeapp
 
 import android.view.View
-import android.widget.RadioButton
 import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 
 class CategoryAdapter(
@@ -13,19 +13,30 @@ class CategoryAdapter(
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvCategory: TextView = itemView.findViewById(R.id.tvCategoryName)
-        val rbSelect: RadioButton = itemView.findViewById(R.id.rbSelect)
+        val cardView: CardView = itemView.findViewById(R.id.cardCategory)
     }
 
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
         val view = android.view.LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_category, parent, false)
+            .inflate(R.layout.item_category_grid, parent, false)
         return ViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val category = categories[position]
         holder.tvCategory.text = category
-        holder.rbSelect.isChecked = (position == selectedIndex)
+
+        if (position == selectedIndex) {
+            holder.cardView.setCardBackgroundColor(
+                holder.itemView.context.resources.getColor(android.R.color.holo_blue_light)
+            )
+            holder.tvCategory.setTextColor(android.graphics.Color.WHITE)
+        } else {
+            holder.cardView.setCardBackgroundColor(
+                holder.itemView.context.resources.getColor(android.R.color.white)
+            )
+            holder.tvCategory.setTextColor(android.graphics.Color.BLACK)
+        }
 
         holder.itemView.setOnClickListener {
             if (selectedIndex != position) {
