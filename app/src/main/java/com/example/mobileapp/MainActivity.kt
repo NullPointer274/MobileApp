@@ -13,6 +13,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.textfield.TextInputEditText
+import com.github.mikephil.charting.data.PieData
+import com.github.mikephil.charting.data.PieDataSet
+import com.github.mikephil.charting.data.PieEntry
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -61,14 +64,17 @@ class MainActivity : AppCompatActivity() {
     private fun setupFilters() {
         findViewById<Button>(R.id.btnFilterAll).setOnClickListener {
             currentFilterType = null
+            updateFilterInfo()
             applyFilters()
         }
         findViewById<Button>(R.id.btnFilterExpense).setOnClickListener {
             currentFilterType = "expense"
+            updateFilterInfo()
             applyFilters()
         }
         findViewById<Button>(R.id.btnFilterIncome).setOnClickListener {
             currentFilterType = "income"
+            updateFilterInfo()
             applyFilters()
         }
         findViewById<Button>(R.id.btnFilterMonth).setOnClickListener {
@@ -148,7 +154,7 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_stats -> {
-                    showStatsDialog()
+                    showAdvancedStatsDialog()
                     true
                 }
                 R.id.nav_categories -> {
@@ -194,11 +200,16 @@ class MainActivity : AppCompatActivity() {
             val operationName = etName.text.toString().trim()
 
             if (amount != null && amount > 0) {
+                val calendar = Calendar.getInstance()
+                val now = Calendar.getInstance()
+                calendar.set(currentYear, currentMonth, now.get(Calendar.DAY_OF_MONTH), now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), now.get(Calendar.SECOND))
+                val transactionDate = calendar.time
+
                 val transaction = Transaction(
                     category = selectedCategory,
                     amount = amount,
                     type = type,
-                    date = Date(),
+                    date = transactionDate,
                     note = etNote.text.toString(),
                     name = if (operationName.isNotEmpty()) operationName else selectedCategory
                 )
@@ -232,8 +243,10 @@ class MainActivity : AppCompatActivity() {
         val tvCurrentDate = view.findViewById<TextView>(R.id.tvCurrentDate)
         val btnChangeDate = view.findViewById<Button>(R.id.btnChangeDate)
         val btnUpdate = view.findViewById<Button>(R.id.btnUpdate)
+        val btnChangeCategory = view.findViewById<Button>(R.id.btnChangeCategory)
 
         var editedDate = transaction.date
+        var editedCategory = transaction.category
 
         etName.setText(transaction.name)
         tvCurrentCategory.text = transaction.category
@@ -248,6 +261,39 @@ class MainActivity : AppCompatActivity() {
                     cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE)).time
                 tvCurrentDate.text = dateFormat.format(editedDate)
             }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+        }
+
+        btnChangeCategory.setOnClickListener {
+            val categoryDialog = BottomSheetDialog(this)
+            val categoryView = layoutInflater.inflate(R.layout.dialog_edit_category, null)
+
+            val rvCategories = categoryView.findViewById<RecyclerView>(R.id.rvEditCategories)
+            val btnClose = categoryView.findViewById<Button>(R.id.btnCloseCategorySelect)
+
+            val categories = if (transaction.type == "expense")
+                categoryManager.getExpenseCategories()
+            else
+                categoryManager.getIncomeCategories()
+
+            var selectedPos = categories.indexOf(editedCategory)
+            if (selectedPos == -1) selectedPos = 0
+
+            val categoryAdapter = CategoryAdapter(categories, selectedPos) { category, _ ->
+                editedCategory = category
+                tvCurrentCategory.text = category
+                categoryDialog.dismiss()
+                Toast.makeText(this, "Категория изменена", Toast.LENGTH_SHORT).show()
+            }
+
+            rvCategories.layoutManager = GridLayoutManager(this, 2)
+            rvCategories.adapter = categoryAdapter
+
+            btnClose.setOnClickListener {
+                categoryDialog.dismiss()
+            }
+
+            categoryDialog.setContentView(categoryView)
+            categoryDialog.show()
         }
 
         btnUpdate.setOnClickListener {
@@ -268,10 +314,11 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val updatedTransaction = transaction.copy(
+                    category = editedCategory,
                     amount = newAmount,
                     note = etNote.text.toString(),
                     date = editedDate,
-                    name = if (newName.isNotEmpty()) newName else transaction.category
+                    name = if (newName.isNotEmpty()) newName else editedCategory
                 )
                 transactions[transactions.indexOfFirst { it.id == transaction.id }] = updatedTransaction
 
@@ -288,22 +335,103 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun showStatsDialog() {
+    private fun showAdvancedStatsDialog() {
         val dialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.dialog_stats, null)
+        val view = layoutInflater.inflate(R.layout.dialog_stats_advanced, null)
 
-        val tvTotalIncome = view.findViewById<TextView>(R.id.tvTotalIncome)
-        val tvTotalExpense = view.findViewById<TextView>(R.id.tvTotalExpense)
-        val tvBalanceStats = view.findViewById<TextView>(R.id.tvBalanceStats)
+        val btnSelectMonth = view.findViewById<Button>(R.id.btnSelectMonthStats)
+        val tvSelectedMonth = view.findViewById<TextView>(R.id.tvSelectedMonthStats)
+        val pieChart = view.findViewById<com.github.mikephil.charting.charts.PieChart>(R.id.pieChart)
+        val rvCategoryStats = view.findViewById<RecyclerView>(R.id.rvCategoryStats)
+        val tvNoExpenses = view.findViewById<TextView>(R.id.tvNoExpenses)
+        val tvTopCategory = view.findViewById<TextView>(R.id.tvTopCategory)
 
-        val totalIncome = transactions.filter { it.type == "income" }.sumOf { it.amount }
-        val totalExpense = transactions.filter { it.type == "expense" }.sumOf { it.amount }
-        val bal = totalIncome - totalExpense
+        var selectedYear = currentYear
+        var selectedMonth = currentMonth
 
-        tvTotalIncome.text = String.format("%.2f ₽", totalIncome)
-        tvTotalExpense.text = String.format("%.2f ₽", totalExpense)
-        tvBalanceStats.text = String.format("%.2f ₽", bal)
+        fun updateStats(year: Int, month: Int) {
+            val calendar = Calendar.getInstance()
 
+            calendar.set(year, month, 1, 0, 0, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val monthStart = calendar.time
+
+            calendar.set(year, month + 1, 1, 0, 0, 0)
+            calendar.add(Calendar.MILLISECOND, -1)
+            val monthEnd = calendar.time
+
+            val monthTransactions = transactions.filter { transaction ->
+                transaction.date in monthStart..monthEnd
+            }
+
+            val expenses = monthTransactions.filter { it.type == "expense" }
+            val incomes = monthTransactions.filter { it.type == "income" }
+
+            val totalExpense = expenses.sumOf { it.amount }
+            val totalIncome = incomes.sumOf { it.amount }
+            val bal = totalIncome - totalExpense
+
+            val expenseByCategory = expenses.groupBy { it.category }
+                .mapValues { it.value.sumOf { trans -> trans.amount } }
+                .toList()
+                .sortedByDescending { it.second }
+
+            view.findViewById<TextView>(R.id.tvTotalIncomeStats).text = String.format("%.2f ₽", totalIncome)
+            view.findViewById<TextView>(R.id.tvTotalExpenseStats).text = String.format("%.2f ₽", totalExpense)
+            view.findViewById<TextView>(R.id.tvBalanceStats).text = String.format("%.2f ₽", bal)
+
+            if (expenseByCategory.isNotEmpty()) {
+                tvNoExpenses.visibility = android.view.View.GONE
+                rvCategoryStats.visibility = android.view.View.VISIBLE
+                pieChart.visibility = android.view.View.VISIBLE
+
+                val entries = expenseByCategory.map { (category, amount) ->
+                    PieEntry(amount.toFloat(), category)
+                }
+                val dataSet = PieDataSet(entries, "Расходы по категориям")
+                dataSet.colors = listOf(
+                    android.graphics.Color.rgb(255, 99, 132),
+                    android.graphics.Color.rgb(54, 162, 235),
+                    android.graphics.Color.rgb(255, 206, 86),
+                    android.graphics.Color.rgb(75, 192, 192),
+                    android.graphics.Color.rgb(153, 102, 255)
+                )
+                dataSet.valueTextSize = 12f
+                dataSet.valueTextColor = android.graphics.Color.BLACK
+
+                pieChart.data = PieData(dataSet)
+                pieChart.description.isEnabled = false
+                pieChart.setUsePercentValues(true)
+                pieChart.animateY(1000)
+                pieChart.invalidate()
+
+                val topCategory = expenseByCategory.first()
+                tvTopCategory.text = "🏆 ${topCategory.first}: ${String.format("%.2f", topCategory.second)} ₽"
+
+                val adapter = CategoryStatsAdapter(expenseByCategory, totalExpense)
+                rvCategoryStats.layoutManager = LinearLayoutManager(this)
+                rvCategoryStats.adapter = adapter
+            } else {
+                tvNoExpenses.visibility = android.view.View.VISIBLE
+                rvCategoryStats.visibility = android.view.View.GONE
+                pieChart.visibility = android.view.View.GONE
+                tvTopCategory.text = "Нет расходов за выбранный период"
+            }
+
+            val monthNames = arrayOf("Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+                "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь")
+            tvSelectedMonth.text = "${monthNames[month]} $year"
+        }
+
+        btnSelectMonth.setOnClickListener {
+            DatePickerDialog(this, { _, year, month, _ ->
+                selectedYear = year
+                selectedMonth = month
+                updateStats(year, month)
+            }, selectedYear, selectedMonth, 1).show()
+        }
+
+        updateStats(selectedYear, selectedMonth)
         dialog.setContentView(view)
         dialog.show()
     }
